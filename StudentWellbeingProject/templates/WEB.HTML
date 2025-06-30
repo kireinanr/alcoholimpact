@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Well-being Scenario Planner</title>
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; background-color: #f0f2f5; color: #333; margin: 0; padding: 20px; }
+        .main-container { max-width: 900px; margin: auto; background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); padding: 40px; }
+        h1 { color: #2c3e50; text-align: center; }
+        .content-grid { display: grid; grid-template-columns: 300px 1fr; gap: 40px; align-items: start; }
+        .controls { display: flex; flex-direction: column; gap: 20px; }
+        .slider-group label { font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .slider-group span { font-weight: 400; color: #007bff; }
+        input[type="range"] { width: 100%; }
+        .chart-container { position: relative; height: 400px; width: 100%; }
+        #recommendation-panel { margin-top: 30px; padding: 15px; background: #e9ecef; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Student Well-being Scenario Planner</h1>
+        <div class="content-grid">
+            <div class="controls">
+                <h3>Your Lifestyle Inputs</h3>
+                <div class="slider-group">
+                    <label>Study Time: <span id="studytime-val">2-5 hours/week</span></label>
+                    <input type="range" id="studytime" min="1" max="4" value="2" oninput="updateScenario('studytime')">
+                </div>
+                <div class="slider-group">
+                    <label>Socializing: <span id="goout-val">Average</span></label>
+                    <input type="range" id="goout" min="1" max="5" value="3" oninput="updateScenario('goout')">
+                </div>
+                <div class="slider-group">
+                    <label>Alcohol Intake: <span id="total_alcohol-val">4 units/week</span></label>
+                    <input type="range" id="total_alcohol" min="2" max="10" value="4" oninput="updateScenario('total_alcohol')">
+                </div>
+                 <div class="slider-group">
+                    <label>Absences: <span id="absences-val">0 days</span></label>
+                    <input type="range" id="absences" min="0" max="10" value="0" oninput="updateScenario('absences')">
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="scenarioChart"></canvas>
+            </div>
+        </div>
+        <div id="recommendation-panel">
+            <h3>Recommendations</h3>
+            <p id="recommendation-text">Adjust the sliders to see the impact on your predicted grade and health.</p>
+        </div>
+    </div>
+<script>
+    let myChart;
+    const studyLabels = { 1: '<2h', 2: '2-5h', 3: '5-10h', 4: '>10h' };
+    const gooutLabels = { 1: 'Very Low', 2: 'Low', 3: 'Average', 4: 'High', 5: 'Very High' };
+
+    // Function to initialize the chart
+    function createChart() {
+        const ctx = document.getElementById('scenarioChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets: [] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Predicted Health Score (1-5)' }, min: 1, max: 5 },
+                    y: { title: { display: true, text: 'Predicted Final Grade (0-20)' }, min: 0, max: 20 }
+                },
+                plugins: { tooltip: {
+                    callbacks: { label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) { label += ': '; }
+                        label += `(Health: ${context.parsed.x.toFixed(1)}, Grade: ${context.parsed.y.toFixed(1)})`;
+                        return label;
+                    }}
+                }}
+            }
+        });
+    }
+
+    // Function to get current inputs from sliders
+    function getBaseInputs() {
+        return {
+            studytime: parseInt(document.getElementById('studytime').value),
+            goout: parseInt(document.getElementById('goout').value),
+            total_alcohol: parseInt(document.getElementById('total_alcohol').value),
+            absences: parseInt(document.getElementById('absences').value)
+        };
+    }
+
+    // Main function to update scenarios and chart
+    async function updateScenario(changedVariable) {
+        // Update slider display text
+        const val = document.getElementById(changedVariable).value;
+        let displayVal;
+        if (changedVariable === 'studytime') displayVal = studyLabels[val];
+        else if (changedVariable === 'goout') displayVal = gooutLabels[val];
+        else displayVal = `${val} ${changedVariable === 'absences' ? 'days' : 'units/week'}`;
+        document.getElementById(`${changedVariable}-val`).innerText = displayVal;
+
+        const response = await fetch('/scenario-planner', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                base_inputs: getBaseInputs(),
+                variable_to_change: changedVariable
+            })
+        });
+        const result = await response.json();
+        
+        if (result.scenarios) {
+            updateChartData(changedVariable, result.scenarios);
+            updateRecommendationText(changedVariable, result.scenarios);
+        }
+    }
+    
+    // Function to update the chart's data
+    function updateChartData(label, data) {
+        myChart.data.datasets = [{
+            label: `Impact of changing ${label}`,
+            data: data,
+            backgroundColor: 'rgba(0, 123, 255, 0.8)',
+            pointRadius: 6,
+            pointHoverRadius: 8
+        }];
+        myChart.update();
+    }
+    
+    // Function to generate recommendation text
+    function updateRecommendationText(variable, scenarios) {
+        const start = scenarios[0];
+        const end = scenarios[scenarios.length - 1];
+        
+        const gradeChange = end.y - start.y;
+        const healthChange = end.x - start.x;
+        
+        let text = `By changing <strong>${variable}</strong> from its lowest to highest value, your predicted grade changes by <strong>${gradeChange.toFixed(1)} points</strong>, and your health score changes by <strong>${healthChange.toFixed(1)} points</strong>.`;
+        if (gradeChange > 0 && healthChange < 0) {
+            text += " This shows a clear trade-off between academics and well-being."
+        } else if (gradeChange > 0 && healthChange > -0.2) {
+            text += " This seems to be a positive change with minimal health impact."
+        }
+        document.getElementById('recommendation-text').innerHTML = text;
+    }
+
+    // Initialize on page load
+    window.onload = () => {
+        createChart();
+        updateScenario('studytime'); // Initial scenario
+    };
+</script>
+</body>
+</html>
