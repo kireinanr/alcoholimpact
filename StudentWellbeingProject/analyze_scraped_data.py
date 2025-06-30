@@ -3,7 +3,7 @@ import os
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # Path to the fake data file (update if needed)
-input_file = os.path.join(os.path.expanduser('~'), 'Desktop', 'fake_scraped_data.jsonl')
+input_file = os.path.join(os.path.expanduser('~'), 'Desktop', 'scraped_data.jsonl')
 output_file = 'scraped_data.jsonl'  # For compatibility with training_pipeline.py
 
 sentiments = []
