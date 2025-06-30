@@ -1,7 +1,7 @@
 
 # Student Wellbeing Project
 
-This project analyzes and predicts student wellbeing using scraped social media data and machine learning models.
+This project analyzes and predicts student wellbeing using scraped social media data and machine learning models (on alcohol, socializing, and study)
 
 ## Project Structure
 
@@ -25,6 +25,12 @@ This project analyzes and predicts student wellbeing using scraped social media 
 2. **Run data analysis**: Use `analyze_fake_scraped_data.py` to analyze the data.
 3. **Train models**: Use `training_pipeline.py` to train or retrain models.
 4. **Run the app**: Use `recommendation_app.py` to start the web app.
+
+
+## Data Sources
+- [Student Alcohol Consumption (UCI/Kaggle)](https://www.kaggle.com/datasets/uciml/student-alcohol-consumption?resource=download)
+- [Drug Use by Age (Kaggle)](https://www.kaggle.com/datasets/tunguz/drug-use-by-age)
+- [Life Expectancy (WHO/Kaggle)](https://www.kaggle.com/datasets/kumarajarshi/life-expectancy-who)
 
 ## Notes
 - Some scripts require ChromeDriver (`chromedriver.exe`) for web scraping.
